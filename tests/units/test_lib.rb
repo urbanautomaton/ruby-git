@@ -127,39 +127,23 @@ class TestLib < Test::Unit::TestCase
     assert_equal(20, a.size)
   end
 
-  def test_environment_reset
-    with_custom_env_variables do
-      ENV['GIT_DIR'] = '/my/git/dir'
-      ENV['GIT_WORK_TREE'] = '/my/work/tree'
-      ENV['GIT_INDEX_FILE'] = 'my_index'
-
-      @lib.log_commits :count => 10
-
-      assert_equal(ENV['GIT_DIR'], '/my/git/dir')
-      assert_equal(ENV['GIT_WORK_TREE'], '/my/work/tree')
-      assert_equal(ENV['GIT_INDEX_FILE'],'my_index')
-    end
-  end
-
   def test_git_ssh_from_environment_is_passed_to_binary
-    with_custom_env_variables do
-      begin
-        Dir.mktmpdir do |dir|
-          output_path = File.join(dir, 'git_ssh_value')
-          binary_path = File.join(dir, 'git.bat') # .bat so it works in Windows too
-          Git::Base.config.binary_path = binary_path
-          File.open(binary_path, 'w') { |f|
-            f << "echo \"my/git-ssh-wrapper\" > #{output_path}"
-          }
-          FileUtils.chmod(0700, binary_path)
-          @lib.checkout('something')
-          assert(File.read(output_path).include?("my/git-ssh-wrapper"))
-        end
-      ensure
-        Git.configure do |config|
-          config.binary_path = nil
-          config.git_ssh = nil
-        end
+    begin
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'git_ssh_value')
+        binary_path = File.join(dir, 'git.bat') # .bat so it works in Windows too
+        Git::Base.config.binary_path = binary_path
+        File.open(binary_path, 'w') { |f|
+          f << "echo \"my/git-ssh-wrapper\" > #{output_path}"
+        }
+        FileUtils.chmod(0700, binary_path)
+        @lib.checkout('something')
+        assert(File.read(output_path).include?("my/git-ssh-wrapper"))
+      end
+    ensure
+      Git.configure do |config|
+        config.binary_path = nil
+        config.git_ssh = nil
       end
     end
   end

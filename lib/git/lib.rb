@@ -1,5 +1,6 @@
 require 'tempfile'
 require 'zlib'
+require 'open3'
 
 module Git
 
@@ -7,9 +8,6 @@ module Git
   end
 
   class Lib
-
-    @@semaphore = Mutex.new
-
     # The path to the Git working copy.  The default is '"./.git"'.
     #
     # @return [Pathname] the path to the Git working copy.
@@ -797,7 +795,7 @@ module Git
       arr_opts << '--no-commit' if opts[:no_commit]
       arr_opts << '--no-ff' if opts[:no_ff]
       arr_opts << '-m' << message if message
-      arr_opts += [branch]
+      arr_opts += Array(branch)
       command('merge', arr_opts)
     end
 
@@ -1051,11 +1049,6 @@ module Git
 
     private
 
-    # Systen ENV variables involved in the git commands.
-    #
-    # @return [<String>] the names of the EVN variables involved in the git commands
-    ENV_VARIABLE_NAMES = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_SSH']
-
     def command_lines(cmd, *opts)
       cmd_op = command(cmd, *opts)
       if cmd_op.encoding.name != "UTF-8"
@@ -1066,76 +1059,62 @@ module Git
       op.split("\n")
     end
 
-    # Takes the current git's system ENV variables and store them.
-    def store_git_system_env_variables
-      @git_system_env_variables = {}
-      ENV_VARIABLE_NAMES.each do |env_variable_name|
-        @git_system_env_variables[env_variable_name] = ENV[env_variable_name]
+    def env
+      ENV.to_h.tap do |env|
+        env['GIT_DIR'] = @git_dir
+        env['GIT_WORK_TREE'] = @git_work_dir
+        env['GIT_INDEX_FILE'] = @git_index_file
+        env['GIT_SSH'] = Git::Base.config.git_ssh
       end
     end
 
-    # Takes the previously stored git's ENV variables and set them again on ENV.
-    def restore_git_system_env_variables
-      ENV_VARIABLE_NAMES.each do |env_variable_name|
-        ENV[env_variable_name] = @git_system_env_variables[env_variable_name]
+    DEFAULT_COMMAND_OPTS = {
+      chomp: true,
+      redirect: ''
+    }
+
+    def command_opts(given_command_opts)
+      DEFAULT_COMMAND_OPTS.merge(given_command_opts).tap do |command_options|
+        command_options.keys.each do |k|
+          raise ArgumentError.new("Unsupported command option: #{k}") unless DEFAULT_COMMAND_OPTS.keys.include?(k)
+        end
       end
     end
 
-    # Sets git's ENV variables to the custom values for the current instance.
-    def set_custom_git_env_variables
-      ENV['GIT_DIR'] = @git_dir
-      ENV['GIT_WORK_TREE'] = @git_work_dir
-      ENV['GIT_INDEX_FILE'] = @git_index_file
-      ENV['GIT_SSH'] = Git::Base.config.git_ssh
-    end
-
-    # Runs a block inside an environment with customized ENV variables.
-    # It restores the ENV after execution.
-    #
-    # @param [Proc] block block to be executed within the customized environment
-    def with_custom_env_variables(&block)
-      @@semaphore.synchronize do
-        store_git_system_env_variables()
-        set_custom_git_env_variables()
-        return block.call()
+    def global_opts
+      Array.new.tap do |global_opts|
+        global_opts << "--git-dir=#{@git_dir}" if !@git_dir.nil?
+        global_opts << "--work-tree=#{@git_work_dir}" if !@git_work_dir.nil?
+        global_opts << %w[-c core.quotePath=true]
+        global_opts << %w[-c color.ui=false]
       end
-    ensure
-      restore_git_system_env_variables()
     end
 
     def command(cmd, *opts, &block)
-      command_opts = { chomp: true, redirect: '' }
-      if opts.last.is_a?(Hash)
-        command_opts.merge!(opts.pop)
-      end
-      command_opts.keys.each do |k|
-        raise ArgumentError.new("Unsupported option: #{k}") unless [:chomp, :redirect].include?(k)
-      end
+      given_command_opts = opts.last.is_a?(Hash) ? opts.pop : {}
+      command_opts = command_opts(given_command_opts)
 
-      global_opts = []
-      global_opts << "--git-dir=#{@git_dir}" if !@git_dir.nil?
-      global_opts << "--work-tree=#{@git_work_dir}" if !@git_work_dir.nil?
-      global_opts << %w[-c core.quotePath=true]
-      global_opts << %w[-c color.ui=false]
-
-      opts = [opts].flatten.map {|s| escape(s) }.join(' ')
-
-      global_opts = global_opts.flatten.map {|s| escape(s) }.join(' ')
-
-      git_cmd = "#{Git::Base.config.binary_path} #{global_opts} #{cmd} #{opts} #{command_opts[:redirect]} 2>&1"
-
-      output = nil
-
-      command_thread = nil;
+      git_cmd = [
+        Git::Base.config.binary_path,
+        flatten_and_escape(global_opts),
+        cmd,
+        flatten_and_escape(opts),
+        command_opts[:redirect]
+      ].join(' ')
 
       exitstatus = nil
 
-      with_custom_env_variables do
-        command_thread = Thread.new do
-          output = run_command(git_cmd, &block)
+      output, exitstatus = begin
+        if block_given?
+          output = IO.popen(env, git_cmd, &block)
           exitstatus = $?.exitstatus
+          [output, exitstatus]
+        else
+          encoded_output, status = Open3.capture2e(env, git_cmd)
+          output = encoded_output.lines.map { |l| Git::EncodingUtils.normalize_encoding(l) }.join
+          exitstatus = status.exitstatus
+          [output, exitstatus]
         end
-        command_thread.join
       end
 
       if @logger
@@ -1207,10 +1186,8 @@ module Git
       arr_opts
     end
 
-    def run_command(git_cmd, &block)
-      return IO.popen(git_cmd, &block) if block_given?
-
-      `#{git_cmd}`.lines.map { |l| Git::EncodingUtils.normalize_encoding(l) }.join
+    def flatten_and_escape(string_or_array)
+      Array(string_or_array).flatten.map { |s| escape(s) }.join(' ')
     end
 
     def escape(s)
