@@ -7,6 +7,52 @@ module Git
   class GitExecuteError < StandardError
   end
 
+  class JRubySubprocessCommand
+    @@semaphore = Mutex.new
+
+    def run(env_overrides, cmd, &block)
+      saved_env = {}
+      @@semaphore.synchronize do
+        saved_env = ENV.slice(*env_overrides.keys)
+        saved_env.each { |k, v| saved_env[k] = nil unless saved_env.key?(k) }
+        ENV.merge!(env_overrides)
+        stdout, stderr, exitstatus = run_command(env, cmd, &block)
+      end
+    ensure
+      ENV.merge!(saved_env)
+    end
+
+    private
+
+    def run_command(cmd, &block)
+      if block_given?
+        output = IO.popen(cmd, &block)
+        exitstatus = $?.exitstatus
+        [output, exitstatus]
+      else
+        encoded_output, status = Open3.capture2e(cmd)
+        output = encoded_output.lines.map { |l| Git::EncodingUtils.normalize_encoding(l) }.join
+        exitstatus = status.exitstatus
+        [output, exitstatus]
+      end
+    end
+  end
+
+  class SubprocessCommand
+    def run(env_overrides, cmd, &block)
+      if block_given?
+        stdout = IO.popen(env_overrides, cmd, &block)
+        exitstatus = $?.exitstatus
+        [stdout, "", exitstatus]
+      else
+        encoded_output, status = Open3.capture2e(env_overrides, cmd)
+        stdout = encoded_output.lines.map { |l| Git::EncodingUtils.normalize_encoding(l) }.join
+        exitstatus = status.exitstatus
+        [stdout, "", exitstatus]
+      end
+    end
+  end
+
   class Lib
     # The path to the Git working copy.  The default is '"./.git"'.
     #
@@ -1059,13 +1105,13 @@ module Git
       op.split("\n")
     end
 
-    def env
-      ENV.to_h.tap do |env|
-        env['GIT_DIR'] = @git_dir
-        env['GIT_WORK_TREE'] = @git_work_dir
-        env['GIT_INDEX_FILE'] = @git_index_file
-        env['GIT_SSH'] = Git::Base.config.git_ssh
-      end
+    def env_overrides
+      {
+        'GIT_DIR' => @git_dir,
+        'GIT_WORK_TREE' => @git_work_dir,
+        'GIT_INDEX_FILE' => @git_index_file,
+        'GIT_SSH' => Git::Base.config.git_ssh
+      }
     end
 
     DEFAULT_COMMAND_OPTS = {
@@ -1090,6 +1136,11 @@ module Git
       end
     end
 
+    def subprocess_command
+      return @subprocess_command if @subprocess_command
+      @subprocess_command = (RUBY_ENGINE == 'java' ? JRubySubprocessCommand.new : SubprocessCommand.new)
+    end
+
     def command(cmd, *opts, &block)
       given_command_opts = opts.last.is_a?(Hash) ? opts.pop : {}
       command_opts = command_opts(given_command_opts)
@@ -1104,30 +1155,19 @@ module Git
 
       exitstatus = nil
 
-      output, exitstatus = begin
-        if block_given?
-          output = IO.popen(env, git_cmd, &block)
-          exitstatus = $?.exitstatus
-          [output, exitstatus]
-        else
-          encoded_output, status = Open3.capture2e(env, git_cmd)
-          output = encoded_output.lines.map { |l| Git::EncodingUtils.normalize_encoding(l) }.join
-          exitstatus = status.exitstatus
-          [output, exitstatus]
-        end
-      end
+      stdout, stderr, exitstatus = subprocess_command.run(env_overrides, git_cmd, &block)
 
       if @logger
         @logger.info(git_cmd)
-        @logger.debug(output)
+        @logger.debug(stdout)
       end
 
-      raise Git::GitExecuteError, "#{git_cmd}:#{output}" if
-        exitstatus > 1 || (exitstatus == 1 && output != '')
+      raise Git::GitExecuteError, "#{git_cmd}:#{stdout}" if
+        exitstatus > 1 || (exitstatus == 1 && stdout != '')
 
-      output.chomp! if output && command_opts[:chomp] && !block_given?
+      stdout.chomp! if stdout && command_opts[:chomp] && !block_given?
 
-      output
+      stdout
     end
 
     # Takes the diff command line output (as Array) and parse it into a Hash
