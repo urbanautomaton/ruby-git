@@ -7,49 +7,59 @@ module Git
   class GitExecuteError < StandardError
   end
 
+  # Execute a command as a subprocess returning the stdout, stderr and status
+  #
+  # JRuby has a problems setting environment variables for the subprocess so
+  # the global ENV is used instead. Because of this, only one command can be run
+  # at a time since each might change ENV in different ways.
+  #
   class JRubySubprocessCommand
     @@semaphore = Mutex.new
 
-    def run(env_overrides, cmd, &block)
+    # Run a command in a subprocess blocking until the command completes
+    #
+    # @example
+    #   command = JRubySubprocessCommand.new
+    #   env_overrides = {}
+    #   stdout, stderr, status = command.run(env_overrides, 'git add .')
+    #
+    # @param env_overrides [Hash] environment variables to set for the subprocess
+    # @param cmd [String] the command to run
+    #
+    # @return [Array(String, String, Process::Status)] the stdout, stderr and status of the command
+    #
+    def run(env_overrides, cmd)
       saved_env = {}
+      # Only allow one command to run at a time since ENV is global and each command
+      # might change the environment in different ways
       @@semaphore.synchronize do
         saved_env = ENV.slice(*env_overrides.keys)
         saved_env.each { |k, v| saved_env[k] = nil unless saved_env.key?(k) }
         ENV.merge!(env_overrides)
-        stdout, stderr, exitstatus = run_command(env, cmd, &block)
+        stdout, stderr, exitstatus = run_command(env, *cmd)
+      ensure
+        ENV.merge!(saved_env)
       end
-    ensure
-      ENV.merge!(saved_env)
     end
 
     private
 
-    def run_command(cmd, &block)
-      if block_given?
-        output = IO.popen(cmd, &block)
-        exitstatus = $?.exitstatus
-        [output, exitstatus]
-      else
-        encoded_output, status = Open3.capture2e(cmd)
-        output = encoded_output.lines.map { |l| Git::EncodingUtils.normalize_encoding(l) }.join
-        exitstatus = status.exitstatus
-        [output, exitstatus]
-      end
+    # Run a command in a subprocess blocking until the command completes
+    # @param [String, Array<String>] cmd
+    def run_command(cmd)
+      encoded_output, status = Open3.capture2e(cmd)
+      stdout = encoded_output.lines.map { |l| Git::EncodingUtils.normalize_encoding(l) }.join
+      exitstatus = status.exitstatus
+      [output, "", exitstatus]
     end
   end
 
   class SubprocessCommand
-    def run(env_overrides, cmd, &block)
-      if block_given?
-        stdout = IO.popen(env_overrides, cmd, &block)
-        exitstatus = $?.exitstatus
-        [stdout, "", exitstatus]
-      else
-        encoded_output, status = Open3.capture2e(env_overrides, cmd)
-        stdout = encoded_output.lines.map { |l| Git::EncodingUtils.normalize_encoding(l) }.join
-        exitstatus = status.exitstatus
-        [stdout, "", exitstatus]
-      end
+    def run(env_overrides, cmd)
+      encoded_output, status = Open3.capture2e(env_overrides, *Array(cmd).flatten)
+      stdout = encoded_output.lines.map { |l| Git::EncodingUtils.normalize_encoding(l) }.join
+      exitstatus = status.exitstatus
+      [stdout, "", exitstatus]
     end
   end
 
@@ -782,24 +792,24 @@ module Git
     end
 
     def stash_save(message)
-      output = command('stash save', message)
+      output = command('stash', 'save', message)
       output =~ /HEAD is now at/
     end
 
     def stash_apply(id = nil)
       if id
-        command('stash apply', id)
+        command('stash', 'apply', id)
       else
-        command('stash apply')
+        command('stash', 'apply')
       end
     end
 
     def stash_clear
-      command('stash clear')
+      command('stash', 'clear')
     end
 
     def stash_list
-      command('stash list')
+      command('stash', 'list')
     end
 
     def branch_new(branch)
@@ -1133,7 +1143,7 @@ module Git
         global_opts << "--work-tree=#{@git_work_dir}" if !@git_work_dir.nil?
         global_opts << %w[-c core.quotePath=true]
         global_opts << %w[-c color.ui=false]
-      end
+      end.flatten
     end
 
     def subprocess_command
@@ -1141,21 +1151,26 @@ module Git
       @subprocess_command = (RUBY_ENGINE == 'java' ? JRubySubprocessCommand.new : SubprocessCommand.new)
     end
 
-    def command(cmd, *opts, &block)
+
+    def build_command(global_opts, cmd, opts, redirect)
+      [
+        Git::Base.config.binary_path,
+        *Array(global_opts).flatten,
+        cmd,
+        *Array(opts).flatten
+      ].tap do |git_cmd|
+        git_cmd.append(redirect) if redirect && !redirect.empty?
+      end.map { |e| e.to_s }
+    end
+
+    def command(cmd, *opts)
       given_command_opts = opts.last.is_a?(Hash) ? opts.pop : {}
       command_opts = command_opts(given_command_opts)
-
-      git_cmd = [
-        Git::Base.config.binary_path,
-        flatten_and_escape(global_opts),
-        cmd,
-        flatten_and_escape(opts),
-        command_opts[:redirect]
-      ].join(' ')
+      git_cmd = build_command(global_opts, cmd, opts, command_opts[:redirect])
 
       exitstatus = nil
 
-      stdout, stderr, exitstatus = subprocess_command.run(env_overrides, git_cmd, &block)
+      stdout, stderr, exitstatus = subprocess_command.run(env_overrides, git_cmd)
 
       if @logger
         @logger.info(git_cmd)
