@@ -1,66 +1,11 @@
+require 'process_executer'
 require 'tempfile'
 require 'zlib'
-require 'open3'
+# require 'open3'
+require 'stringio'
 
 module Git
-
   class GitExecuteError < StandardError
-  end
-
-  # Execute a command as a subprocess returning the stdout, stderr and status
-  #
-  # JRuby has a problems setting environment variables for the subprocess so
-  # the global ENV is used instead. Because of this, only one command can be run
-  # at a time since each might change ENV in different ways.
-  #
-  class JRubySubprocessCommand
-    @@semaphore = Mutex.new
-
-    # Run a command in a subprocess blocking until the command completes
-    #
-    # @example
-    #   command = JRubySubprocessCommand.new
-    #   env_overrides = {}
-    #   stdout, stderr, status = command.run(env_overrides, 'git add .')
-    #
-    # @param env_overrides [Hash] environment variables to set for the subprocess
-    # @param cmd [String] the command to run
-    #
-    # @return [Array(String, String, Process::Status)] the stdout, stderr and status of the command
-    #
-    def run(env_overrides, cmd)
-      saved_env = {}
-      # Only allow one command to run at a time since ENV is global and each command
-      # might change the environment in different ways
-      @@semaphore.synchronize do
-        saved_env = ENV.slice(*env_overrides.keys)
-        saved_env.each { |k, v| saved_env[k] = nil unless saved_env.key?(k) }
-        ENV.merge!(env_overrides)
-        stdout, stderr, exitstatus = run_command(env, *cmd)
-      ensure
-        ENV.merge!(saved_env)
-      end
-    end
-
-    private
-
-    # Run a command in a subprocess blocking until the command completes
-    # @param [String, Array<String>] cmd
-    def run_command(cmd)
-      encoded_output, status = Open3.capture2e(cmd)
-      stdout = encoded_output.lines.map { |l| Git::EncodingUtils.normalize_encoding(l) }.join
-      exitstatus = status.exitstatus
-      [output, "", exitstatus]
-    end
-  end
-
-  class SubprocessCommand
-    def run(env_overrides, cmd)
-      encoded_output, status = Open3.capture2e(env_overrides, *Array(cmd).flatten)
-      stdout = encoded_output.lines.map { |l| Git::EncodingUtils.normalize_encoding(l) }.join
-      exitstatus = status.exitstatus
-      [stdout, "", exitstatus]
-    end
   end
 
   class Lib
@@ -169,7 +114,7 @@ module Git
       arr_opts << repository_url
       arr_opts << clone_dir
 
-      command('clone', arr_opts)
+      command_merged_output('clone', arr_opts)
 
       return_base_opts_from_clone(clone_dir, opts)
     end
@@ -371,7 +316,19 @@ module Git
     end
 
     def object_contents(sha, &block)
-      command('cat-file', '-p', sha, &block)
+      if block_given?
+        Tempfile.create do |file|
+          # If a block is given, write the output from the process to a temporary
+          # file and then yield the file to the block
+          #
+          command_with_redirect('cat-file', "-p", sha, stdout_writer: file, stderr_writer: file)
+          file.rewind
+          yield file
+        end
+      else
+        # If a block is not given, return stdout
+        command('cat-file', '-p', sha)
+      end
     end
 
     def ls_tree(sha)
@@ -880,16 +837,17 @@ module Git
 
     def conflicts # :yields: file, your, their
       self.unmerged.each do |f|
-        your_tempfile = Tempfile.new("YOUR-#{File.basename(f)}")
-        your = your_tempfile.path
-        your_tempfile.close # free up file for git command process
-        command('show', ":2:#{f}", redirect: "> #{escape your}")
+        Tempfile.create("YOUR-#{File.basename(f)}") do |your|
+          command_with_redirect('show', ":2:#{f}", stdout_writer: your)
+          your.close
 
-        their_tempfile = Tempfile.new("THEIR-#{File.basename(f)}")
-        their = their_tempfile.path
-        their_tempfile.close # free up file for git command process
-        command('show', ":3:#{f}", redirect: "> #{escape their}")
-        yield(f, your, their)
+          Tempfile.create("THEIR-#{File.basename(f)}") do |their|
+            command_with_redirect('show', ":3:#{f}", stdout_writer: their)
+            their.close
+
+            yield(f, your.path, their.path)
+          end
+        end
       end
     end
 
@@ -962,7 +920,7 @@ module Git
       arr_opts << remote if remote
       arr_opts << opts[:ref] if opts[:ref]
 
-      command('fetch', arr_opts)
+      command_merged_output('fetch', arr_opts)
     end
 
     def push(remote, branch = 'master', opts = {})
@@ -1016,15 +974,12 @@ module Git
 
     def commit_tree(tree, opts = {})
       opts[:message] ||= "commit tree #{tree}"
-      t = Tempfile.new('commit-message')
-      t.write(opts[:message])
-      t.close
-
       arr_opts = []
       arr_opts << tree
       arr_opts << '-p' << opts[:parent] if opts[:parent]
       arr_opts += [opts[:parents]].map { |p| ['-p', p] }.flatten if opts[:parents]
-      command('commit-tree', arr_opts, redirect: "< #{escape t.path}")
+      arr_opts << '-m' << opts[:message]
+      command('commit-tree', arr_opts)
     end
 
     def update_ref(branch, commit)
@@ -1070,7 +1025,11 @@ module Git
       arr_opts << "--remote=#{opts[:remote]}" if opts[:remote]
       arr_opts << sha
       arr_opts << '--' << opts[:path] if opts[:path]
-      command('archive', arr_opts, redirect: " > #{escape file}")
+
+      f = File.open(file, 'w')
+      command_with_redirect('archive', arr_opts, stdout_writer: f)
+      f.close
+
       if opts[:add_gzip]
         file_content = File.read(file)
         Zlib::GzipWriter.open(file) do |gz|
@@ -1124,10 +1083,7 @@ module Git
       }
     end
 
-    DEFAULT_COMMAND_OPTS = {
-      chomp: true,
-      redirect: ''
-    }
+    DEFAULT_COMMAND_OPTS = { chomp: true }
 
     def command_opts(given_command_opts)
       DEFAULT_COMMAND_OPTS.merge(given_command_opts).tap do |command_options|
@@ -1146,43 +1102,122 @@ module Git
       end.flatten
     end
 
-    def subprocess_command
-      return @subprocess_command if @subprocess_command
-      @subprocess_command = (RUBY_ENGINE == 'java' ? JRubySubprocessCommand.new : SubprocessCommand.new)
-    end
-
-
-    def build_command(global_opts, cmd, opts, redirect)
+    def build_command(global_opts, cmd, opts)
       [
         Git::Base.config.binary_path,
         *Array(global_opts).flatten,
         cmd,
         *Array(opts).flatten
-      ].tap do |git_cmd|
-        git_cmd.append(redirect) if redirect && !redirect.empty?
-      end.map { |e| e.to_s }
+      ].map { |e| e.to_s }
     end
 
-    def command(cmd, *opts)
+    def command_with_redirect(cmd, *opts, stdout_writer: nil, stderr_writer: nil)
       given_command_opts = opts.last.is_a?(Hash) ? opts.pop : {}
       command_opts = command_opts(given_command_opts)
-      git_cmd = build_command(global_opts, cmd, opts, command_opts[:redirect])
 
-      exitstatus = nil
+      git_cmd = build_command(global_opts, cmd, opts).flatten
 
-      stdout, stderr, exitstatus = subprocess_command.run(env_overrides, git_cmd)
+      stdout_writers = []
+      stdout_writers << stdout_writer if stdout_writer
+
+      stderr_writers = []
+      stderr_writers << stderr_writer if stderr_writer
+
+      begin
+        stdout_pipe = ProcessExecuter::MonitoredPipe.new(*stdout_writers, chunk_size: 10_000)
+        stderr_pipe = ProcessExecuter::MonitoredPipe.new(*stderr_writers, chunk_size: 10_000)
+
+        spawn_opts = { out: stdout_pipe, err: stderr_pipe }
+
+        status = ProcessExecuter.spawn(env_overrides, *git_cmd, **spawn_opts)
+      ensure
+        stdout_pipe&.close
+        stderr_pipe&.close
+      end
 
       if @logger
         @logger.info(git_cmd)
         @logger.debug(stdout)
       end
 
-      raise Git::GitExecuteError, "#{git_cmd}:#{stdout}" if
-        exitstatus > 1 || (exitstatus == 1 && stdout != '')
+      exitstatus = status.exitstatus
 
-      stdout.chomp! if stdout && command_opts[:chomp] && !block_given?
+      raise Git::GitExecuteError, "#{git_cmd}:#{stderr}" if
+        exitstatus > 1 || (exitstatus == 1 && stderr != '')
+    end
 
-      stdout
+    def command_merged_output(cmd, *opts)
+      given_command_opts = opts.last.is_a?(Hash) ? opts.pop : {}
+      command_opts = command_opts(given_command_opts)
+
+      git_cmd = build_command(global_opts, cmd, opts).flatten
+
+      stdout_writer = StringIO.new
+      stdout_writers = [stdout_writer]
+
+      begin
+        stdout_pipe = ProcessExecuter::MonitoredPipe.new(*stdout_writers, chunk_size: 10_000)
+        stderr_pipe = stdout_pipe
+
+        spawn_opts = { out: stdout_pipe, err: stderr_pipe }
+
+        status = ProcessExecuter.spawn(env_overrides, *git_cmd, **spawn_opts)
+      ensure
+        stdout_pipe&.close
+      end
+
+      stdout = stdout_writer.string.lines.map { |l| Git::EncodingUtils.normalize_encoding(l) }.join
+      stderr = ''
+      exitstatus = status.exitstatus
+
+      if @logger
+        @logger.info(git_cmd)
+        @logger.debug(stdout)
+      end
+
+      raise Git::GitExecuteError, "#{git_cmd}:#{stderr}" if
+        exitstatus > 1 || (exitstatus == 1 && stderr != '')
+
+      command_opts[:chomp] ? stdout.chomp : stdout
+    end
+
+    def command(cmd, *opts)
+      given_command_opts = opts.last.is_a?(Hash) ? opts.pop : {}
+      command_opts = command_opts(given_command_opts)
+
+      git_cmd = build_command(global_opts, cmd, opts).flatten
+
+      stdout_writer = StringIO.new
+      stdout_writers = [stdout_writer]
+
+      stderr_writer = StringIO.new
+      stderr_writers = [stderr_writer]
+
+      begin
+        stdout_pipe = ProcessExecuter::MonitoredPipe.new(*stdout_writers, chunk_size: 10_000)
+        stderr_pipe = ProcessExecuter::MonitoredPipe.new(*stderr_writers, chunk_size: 10_000)
+
+        spawn_opts = { out: stdout_pipe, err: stderr_pipe }
+
+        status = ProcessExecuter.spawn(env_overrides, *git_cmd, **spawn_opts)
+      ensure
+        stdout_pipe&.close
+        stderr_pipe&.close
+      end
+
+      stdout = stdout_writer.string.lines.map { |l| Git::EncodingUtils.normalize_encoding(l) }.join
+      stderr = stderr_writer.string.lines.map { |l| Git::EncodingUtils.normalize_encoding(l) }.join
+      exitstatus = status.exitstatus
+
+      if @logger
+        @logger.info(git_cmd)
+        @logger.debug(stdout)
+      end
+
+      raise Git::GitExecuteError, "#{git_cmd}:#{stderr}" if
+        exitstatus > 1 || (exitstatus == 1 && stderr != '')
+
+      command_opts[:chomp] ? stdout.chomp : stdout
     end
 
     # Takes the diff command line output (as Array) and parse it into a Hash
@@ -1239,30 +1274,6 @@ module Git
       arr_opts << opts[:object] if opts[:object].is_a? String
       arr_opts << '--' << opts[:path_limiter] if opts[:path_limiter]
       arr_opts
-    end
-
-    def flatten_and_escape(string_or_array)
-      Array(string_or_array).flatten.map { |s| escape(s) }.join(' ')
-    end
-
-    def escape(s)
-      windows_platform? ? escape_for_windows(s) : escape_for_sh(s)
-    end
-
-    def escape_for_sh(s)
-      "'#{s && s.to_s.gsub('\'','\'"\'"\'')}'"
-    end
-
-    def escape_for_windows(s)
-      # Escape existing double quotes in s and then wrap the result with double quotes
-      escaped_string = s.to_s.gsub('"','\\"')
-      %Q{"#{escaped_string}"}
-    end
-
-    def windows_platform?
-      # Check if on Windows via RUBY_PLATFORM (CRuby) and RUBY_DESCRIPTION (JRuby)
-      win_platform_regex = /mingw|mswin/
-      RUBY_PLATFORM =~ win_platform_regex || RUBY_DESCRIPTION =~ win_platform_regex
     end
   end
 end

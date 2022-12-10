@@ -91,13 +91,14 @@ class TestLib < Test::Unit::TestCase
     assert(@lib.reset(nil, hard: true)) # to get around worktree status on windows
 
     actual_cmd = nil
-    @lib.define_singleton_method(:run_command) do |git_cmd, &block|
-      actual_cmd = git_cmd
-      super(git_cmd, &block)
+    @lib.define_singleton_method(:command) do |cmd, *options|
+      actual_cmd = [cmd, *options].flatten
+      super(cmd, *options)
     end
 
     assert(@lib.checkout('test_checkout_b2', {new_branch: true, start_point: 'master'}))
-    assert_match(%r/checkout ['"]-b['"] ['"]test_checkout_b2['"] ['"]master['"]/, actual_cmd)
+
+    assert_equal(['checkout', '-b', 'test_checkout_b2', 'master'], actual_cmd)
   end
 
   # takes parameters, returns array of appropriate commit objects
