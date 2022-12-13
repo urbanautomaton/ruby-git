@@ -6,6 +6,9 @@ require 'test/unit'
 
 require "git"
 
+$stdout.sync = true
+$stderr.sync = true
+
 class Test::Unit::TestCase
 
   def set_file_paths
