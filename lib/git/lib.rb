@@ -1170,6 +1170,8 @@ module Git
       stderr = ''
       exitstatus = status.exitstatus
 
+      pp status if exitstatus.nil?
+
       if @logger
         @logger.info(git_cmd)
         @logger.debug(stdout)
