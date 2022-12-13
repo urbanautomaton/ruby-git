@@ -9,6 +9,7 @@ desc 'Run Unit Tests'
 task :test do
   sh 'git config --global user.email "git@example.com"' if `git config user.email`.empty?
   sh 'git config --global user.name "GitExample"' if `git config user.name`.empty?
+  sh 'git config --global init.defaultBranch master' if `git config init.defaultBranch`.empty?
 
   require File.dirname(__FILE__) + '/tests/all_tests.rb'
 end
