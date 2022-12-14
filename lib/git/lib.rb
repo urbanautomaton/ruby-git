@@ -1135,10 +1135,24 @@ module Git
         stderr_pipe&.close
       end
 
+      warn "status is a #{status.class}" unless status.is_a?(Process::Status)
+      warn "stdout_pipe exception #{stdout_pipe.exception.inspect}, status is #{status.inspect}, exitstatus is #{status.exitstatus}" if stdout_pipe.exception
+      warn "stderr_pipe exception #{stderr_pipe.exception.inspect}, status is #{status.inspect}, exitstatus is #{status.exitstatus}" if stderr_pipe.exception
+
       if @logger
-        @logger.info(git_cmd)
-        @logger.debug(stdout)
+        @logger.info("#{git_cmd} exited with status #{status.inspect}, output redirected")
       end
+
+      if stdout_pipe.exception || stderr_pipe.exception
+        message = if stdout_pipe.exception
+          message = "#{git_cmd} stdout_pipe.exception=#{stdout_pipe.exception.inspect}, status=#{status.inspect}"
+        elsif stderr_pipe.exception
+          message = "#{git_cmd} stderr_pipe.exception=#{stderr_pipe.exception.inspect}, status=#{status.inspect}"
+        end
+        raise Git::GitExecuteError, message if message
+      end
+
+      raise Git::GitExecuteError, "#{git_cmd} exited with signal #{status.inspect}" if status.signaled?
 
       exitstatus = status.exitstatus
 
@@ -1166,15 +1180,31 @@ module Git
         stdout_pipe&.close
       end
 
+      warn "status is a #{status.class}" unless status.is_a?(Process::Status)
+      warn "stdout_pipe exception #{stdout_pipe.exception.inspect}, status is #{status.inspect}, exitstatus is #{status.exitstatus}" if stdout_pipe.exception
+      warn "stderr_pipe exception #{stderr_pipe.exception.inspect}, status is #{status.inspect}, exitstatus is #{status.exitstatus}" if stderr_pipe.exception
+
+      if @logger
+        @logger.info("#{git_cmd} exited with status #{status.inspect}, stdout and stderr merged")
+      end
+
+      if stdout_pipe.exception || stderr_pipe.exception
+        message = if stdout_pipe.exception
+          message = "#{git_cmd} stdout_pipe.exception=#{stdout_pipe.exception.inspect}, status=#{status.inspect}"
+        elsif stderr_pipe.exception
+          message = "#{git_cmd} stderr_pipe.exception=#{stderr_pipe.exception.inspect}, status=#{status.inspect}"
+        end
+        raise Git::GitExecuteError, message if message
+      end
+
+      raise Git::GitExecuteError, "#{git_cmd} exited with signal #{status.inspect}" if status.signaled?
+
       stdout = stdout_writer.string.lines.map { |l| Git::EncodingUtils.normalize_encoding(l) }.join
       stderr = ''
       exitstatus = status.exitstatus
 
-      pp status if exitstatus.nil?
-
       if @logger
-        @logger.info(git_cmd)
-        @logger.debug(stdout)
+        @logger.debug("Merged stdout and stderr: #{stdout}")
       end
 
       raise Git::GitExecuteError, "#{git_cmd}:#{stderr}" if
@@ -1207,13 +1237,32 @@ module Git
         stderr_pipe&.close
       end
 
+      warn "status is a #{status.class}" unless status.is_a?(Process::Status)
+      warn "stdout_pipe exception #{stdout_pipe.exception.inspect}, status is #{status.inspect}, exitstatus is #{status.exitstatus}" if stdout_pipe.exception
+      warn "stderr_pipe exception #{stderr_pipe.exception.inspect}, status is #{status.inspect}, exitstatus is #{status.exitstatus}" if stderr_pipe.exception
+
+      if @logger
+        @logger.info("#{git_cmd} exited with status #{status.inspect}")
+      end
+
+      if stdout_pipe.exception || stderr_pipe.exception
+        message = if stdout_pipe.exception
+          message = "#{git_cmd} stdout_pipe.exception=#{stdout_pipe.exception.inspect}, status=#{status.inspect}"
+        elsif stderr_pipe.exception
+          message = "#{git_cmd} stderr_pipe.exception=#{stderr_pipe.exception.inspect}, status=#{status.inspect}"
+        end
+        raise Git::GitExecuteError, message if message
+      end
+
+      raise Git::GitExecuteError, "#{git_cmd} exited with signal #{status.inspect}" if status.signaled?
+
       stdout = stdout_writer.string.lines.map { |l| Git::EncodingUtils.normalize_encoding(l) }.join
       stderr = stderr_writer.string.lines.map { |l| Git::EncodingUtils.normalize_encoding(l) }.join
       exitstatus = status.exitstatus
 
       if @logger
-        @logger.info(git_cmd)
-        @logger.debug(stdout)
+        @logger.debug("stdout: #{stdout}")
+        @logger.debug("stderr: #{stderr}")
       end
 
       raise Git::GitExecuteError, "#{git_cmd}:#{stderr}" if

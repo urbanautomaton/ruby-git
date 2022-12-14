@@ -31,7 +31,7 @@ class TestLogger < Test::Unit::TestCase
     expected_log_entry = /INFO -- : .*git.*branch.*-a/
     assert_match(expected_log_entry, logc, missing_log_entry)
 
-    expected_log_entry = /DEBUG -- :   cherry/
+    expected_log_entry = /DEBUG -- : stdout:   cherry/
     assert_match(expected_log_entry, logc, missing_log_entry)
   end
 
