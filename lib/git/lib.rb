@@ -1026,7 +1026,7 @@ module Git
       arr_opts << sha
       arr_opts << '--' << opts[:path] if opts[:path]
 
-      f = File.open(file, 'w')
+      f = File.open(file, 'wb')
       command_with_redirect('archive', arr_opts, stdout_writer: f)
       f.close
 
