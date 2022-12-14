@@ -1156,7 +1156,7 @@ module Git
 
       exitstatus = status.exitstatus
 
-      raise Git::GitExecuteError, "#{git_cmd}:#{stderr}" if
+      raise Git::GitExecuteError, "#{git_cmd}\n#{status.inspect}\nstderr: #{stderr}" if
         exitstatus > 1 || (exitstatus == 1 && stderr != '')
     end
 
@@ -1207,7 +1207,7 @@ module Git
         @logger.debug("Merged stdout and stderr: #{stdout}")
       end
 
-      raise Git::GitExecuteError, "#{git_cmd}:#{stderr}" if
+      raise Git::GitExecuteError, "#{git_cmd}\n#{status.inspect}\nstderr: #{stderr}" if
         exitstatus > 1 || (exitstatus == 1 && stderr != '')
 
       command_opts[:chomp] ? stdout.chomp : stdout
@@ -1265,7 +1265,7 @@ module Git
         @logger.debug("stderr: #{stderr}")
       end
 
-      raise Git::GitExecuteError, "#{git_cmd}:#{stderr}" if
+      raise Git::GitExecuteError, "#{git_cmd}\n#{status.inspect}\nstderr: #{stderr}" if
         exitstatus > 1 || (exitstatus == 1 && stderr != '')
 
       command_opts[:chomp] ? stdout.chomp : stdout
