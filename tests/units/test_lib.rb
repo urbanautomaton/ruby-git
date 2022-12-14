@@ -129,17 +129,17 @@ class TestLib < Test::Unit::TestCase
   end
 
   def test_git_ssh_from_environment_is_passed_to_binary
+    Git::Base.config.git_ssh
     begin
       Dir.mktmpdir do |dir|
         output_path = File.join(dir, 'git_ssh_value')
         binary_path = File.join(dir, 'git.bat') # .bat so it works in Windows too
         Git::Base.config.binary_path = binary_path
-        File.open(binary_path, 'w') { |f|
-          f << "echo \"my/git-ssh-wrapper\" > #{output_path}"
-        }
+        Git::Base.config.git_ssh = 'GIT_SSH_VALUE'
+        File.write(binary_path, "echo $GIT_SSH > #{output_path}")
         FileUtils.chmod(0700, binary_path)
         @lib.checkout('something')
-        assert(File.read(output_path).include?("my/git-ssh-wrapper"))
+        assert(File.read(output_path).include?("GIT_SSH_VALUE"))
       end
     ensure
       Git.configure do |config|
