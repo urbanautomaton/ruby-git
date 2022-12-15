@@ -129,24 +129,26 @@ class TestLib < Test::Unit::TestCase
   end
 
   def test_git_ssh_from_environment_is_passed_to_binary
-    Git::Base.config.git_ssh
-    begin
-      Dir.mktmpdir do |dir|
-        output_path = File.join(dir, 'git_ssh_value')
-        binary_path = File.join(dir, 'git.bat') # .bat so it works in Windows too
-        Git::Base.config.binary_path = binary_path
-        Git::Base.config.git_ssh = 'GIT_SSH_VALUE'
-        File.write(binary_path, "echo $GIT_SSH > #{output_path}")
-        FileUtils.chmod(0700, binary_path)
-        @lib.checkout('something')
-        assert(File.read(output_path).include?("GIT_SSH_VALUE"))
-      end
-    ensure
-      Git.configure do |config|
-        config.binary_path = nil
-        config.git_ssh = nil
-      end
+    saved_binary_path = Git::Base.config.binary_path
+    saved_git_ssh = Git::Base.config.git_ssh
+
+    Dir.mktmpdir do |dir|
+      output_path = File.join(dir, 'git_ssh_value')
+      binary_path = File.join(dir, 'my_own_git.bat') # .bat so it works in Windows too
+      Git::Base.config.binary_path = binary_path
+      Git::Base.config.git_ssh = 'GIT_SSH_VALUE'
+      File.write(binary_path, <<~SCRIPT)
+        #!/bin/sh
+        set > "#{output_path}"
+      SCRIPT
+      FileUtils.chmod(0700, binary_path)
+      @lib.checkout('something')
+      env = File.read(output_path)
+      assert_match(/^GIT_SSH=(["']?)GIT_SSH_VALUE\1$/, env, 'GIT_SSH should be set in the environment')
     end
+  ensure
+    Git::Base.config.binary_path = saved_binary_path
+    Git::Base.config.git_ssh = saved_git_ssh
   end
 
   def test_revparse
