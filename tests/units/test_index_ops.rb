@@ -112,7 +112,7 @@ class TestIndexOps < Test::Unit::TestCase
         new_file('test-file2', 'blablahbla')
         g.add
         g.commit("second-commit")
-        g.gcommit('HEAD')
+        second_commit = g.gcommit('HEAD')
 
         puts "Log after two commits:"
         puts '-' * 80
