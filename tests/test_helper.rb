@@ -2,6 +2,7 @@ require 'date'
 require 'fileutils'
 require 'logger'
 require 'minitar'
+require 'pathname'
 require 'test/unit'
 
 require "git"
@@ -9,15 +10,7 @@ require "git"
 class Test::Unit::TestCase
 
   def set_file_paths
-    cwd = FileUtils.pwd
-    if File.directory?(File.join(cwd, 'files'))
-      @test_dir = File.join(cwd, 'files')
-    elsif File.directory?(File.join(cwd, '..', 'files'))
-      @test_dir = File.join(cwd, '..', 'files')
-    elsif File.directory?(File.join(cwd, 'tests', 'files'))
-      @test_dir = File.join(cwd, 'tests', 'files')
-    end
-
+    @test_dir = Pathname.new(__dir__).join('files')
     @wdir_dot = File.expand_path(File.join(@test_dir, 'working'))
     @wbare = File.expand_path(File.join(@test_dir, 'working.git'))
     @index = File.expand_path(File.join(@test_dir, 'index'))
