@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-require_relative '../test_helper'
+require 'test_helper'
 
 class TestRemotes < Test::Unit::TestCase
   def setup

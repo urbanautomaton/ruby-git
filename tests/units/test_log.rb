@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 require 'logger'
-require File.dirname(__FILE__) + '/../test_helper'
+require 'test_helper'
 
 class TestLog < Test::Unit::TestCase
   def setup

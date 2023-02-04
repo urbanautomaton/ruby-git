@@ -1,7 +1,7 @@
 require 'bundler/gem_tasks'
 require 'English'
 
-require "#{File.expand_path(File.dirname(__FILE__))}/lib/git/version"
+require 'git/version'
 
 default_tasks = []
 
@@ -10,7 +10,15 @@ task :test do
   sh 'git config --global user.email "git@example.com"' if `git config user.email`.empty?
   sh 'git config --global user.name "GitExample"' if `git config user.name`.empty?
 
-  require File.dirname(__FILE__) + '/tests/all_tests.rb'
+  $LOAD_PATH.unshift(File.join(__dir__, 'tests'))
+
+  Dir.glob(File.join(__dir__, 'tests/**/test_*.rb')) do |p|
+    require p
+  end
+
+  # You can run individual test files from the command line with:
+  #
+  # $ ruby -Ilib:tests tests/units/test_archive.rb
 end
 default_tasks << :test
 
