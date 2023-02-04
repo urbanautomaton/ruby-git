@@ -9,7 +9,7 @@ class TestStashes < Test::Unit::TestCase
   
   def test_stash_unstash
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'stash_test')
+      g = Git.clone(BARE_REPO_PATH, 'stash_test')
       Dir.chdir('stash_test') do
         assert_equal(0, g.branch.stashes.size)
         new_file('test-file1', 'blahblahblah1')
@@ -35,7 +35,7 @@ class TestStashes < Test::Unit::TestCase
 
   def test_stashes_all
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'stash_test')
+      g = Git.clone(BARE_REPO_PATH, 'stash_test')
       Dir.chdir('stash_test') do
         assert_equal(0, g.branch.stashes.size)
         new_file('test-file1', 'blahblahblah1')

@@ -11,7 +11,7 @@ class TestTreeOps < Test::Unit::TestCase
   def test_read_tree
 
     in_temp_dir do
-      g = Git.clone(@wbare, 'test')
+      g = Git.clone(BARE_REPO_PATH, 'test')
 
       g.chdir do
         g.branch('testbranch1').in_branch('tb commit 1') do

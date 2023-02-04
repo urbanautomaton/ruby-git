@@ -9,7 +9,7 @@ class TestMerge < Test::Unit::TestCase
   
   def test_branch_and_merge
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'branch_merge_test')
+      g = Git.clone(BARE_REPO_PATH, 'branch_merge_test')
       Dir.chdir('branch_merge_test') do
 
         g.branch('new_branch').in_branch('test') do
@@ -35,7 +35,7 @@ class TestMerge < Test::Unit::TestCase
   
   def test_branch_and_merge_two
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'branch_merge_test')
+      g = Git.clone(BARE_REPO_PATH, 'branch_merge_test')
       Dir.chdir('branch_merge_test') do
 
         g.branch('new_branch').in_branch('test') do
@@ -70,7 +70,7 @@ class TestMerge < Test::Unit::TestCase
   
   def test_branch_and_merge_multiple
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'branch_merge_test')
+      g = Git.clone(BARE_REPO_PATH, 'branch_merge_test')
       Dir.chdir('branch_merge_test') do
 
         g.branch('new_branch').in_branch('test') do
@@ -103,7 +103,7 @@ class TestMerge < Test::Unit::TestCase
   
   def test_no_ff_merge
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'branch_merge_test')
+      g = Git.clone(BARE_REPO_PATH, 'branch_merge_test')
       Dir.chdir('branch_merge_test') do
 
         g.branch('new_branch').in_branch('first commit message') do
@@ -133,7 +133,7 @@ class TestMerge < Test::Unit::TestCase
 
   def test_merge_no_commit
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'branch_merge_test')
+      g = Git.clone(BARE_REPO_PATH, 'branch_merge_test')
       g.chdir do
         g.branch('new_branch_1').in_branch('first commit message') do
           new_file('new_file_1', 'foo')

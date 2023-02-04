@@ -58,7 +58,7 @@ class TestBranch < Test::Unit::TestCase
   
   def test_branch_create_and_switch
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'branch_test')
+      g = Git.clone(BARE_REPO_PATH, 'branch_test')
       Dir.chdir('branch_test') do
         assert(!g.branch('new_branch').current)
         g.branch('other_branch').create

@@ -18,14 +18,14 @@ class TestInit < Test::Unit::TestCase
 
   def test_open_opts
     index = File.join(TEST_FIXTURES, 'index')
-    g = Git.open @wdir, :repository => @wbare, :index => index
-    assert_equal(g.repo.path, @wbare)
+    g = Git.open @wdir, :repository => BARE_REPO_PATH, :index => index
+    assert_equal(g.repo.path, BARE_REPO_PATH)
     assert_equal(g.index.path, index)
   end
 
   def test_git_bare
-    g = Git.bare @wbare
-    assert_equal(g.repo.path, @wbare)
+    g = Git.bare BARE_REPO_PATH
+    assert_equal(g.repo.path, BARE_REPO_PATH)
   end
 
   #g = Git.init
@@ -77,7 +77,7 @@ class TestInit < Test::Unit::TestCase
 
   def test_git_clone
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'bare-co')
+      g = Git.clone(BARE_REPO_PATH, 'bare-co')
       assert(File.exist?(File.join(g.repo.path, 'config')))
       assert(g.dir)
     end
@@ -85,14 +85,14 @@ class TestInit < Test::Unit::TestCase
 
   def test_git_clone_with_branch
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'clone-branch', :branch => 'test')
+      g = Git.clone(BARE_REPO_PATH, 'clone-branch', :branch => 'test')
       assert_equal(g.current_branch, 'test')
     end
   end
 
   def test_git_clone_bare
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'bare.git', :bare => true)
+      g = Git.clone(BARE_REPO_PATH, 'bare.git', :bare => true)
       assert(File.exist?(File.join(g.repo.path, 'config')))
       assert_nil(g.dir)
     end
@@ -100,7 +100,7 @@ class TestInit < Test::Unit::TestCase
 
   def test_git_clone_mirror
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'bare.git', :mirror => true)
+      g = Git.clone(BARE_REPO_PATH, 'bare.git', :mirror => true)
       assert(File.exist?(File.join(g.repo.path, 'config')))
       assert_nil(g.dir)
     end
@@ -108,7 +108,7 @@ class TestInit < Test::Unit::TestCase
 
   def test_git_clone_config
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'config.git', :config => "receive.denyCurrentBranch=ignore")
+      g = Git.clone(BARE_REPO_PATH, 'config.git', :config => "receive.denyCurrentBranch=ignore")
       assert_equal('ignore', g.config['receive.denycurrentbranch'])
       assert(File.exist?(File.join(g.repo.path, 'config')))
       assert(g.dir)
@@ -120,7 +120,7 @@ class TestInit < Test::Unit::TestCase
   #
   def test_git_clone_without_log
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'bare-co')
+      g = Git.clone(BARE_REPO_PATH, 'bare-co')
       actual_logger = g.instance_variable_get(:@logger)
       assert_equal(nil, actual_logger)
     end
@@ -134,7 +134,7 @@ class TestInit < Test::Unit::TestCase
     expected_logger = Logger.new(log_io)
 
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'bare-co', { log: expected_logger })
+      g = Git.clone(BARE_REPO_PATH, 'bare-co', { log: expected_logger })
       actual_logger = g.instance_variable_get(:@logger)
       assert_equal(expected_logger.object_id, actual_logger.object_id)
 
@@ -148,7 +148,7 @@ class TestInit < Test::Unit::TestCase
   # trying to open a git project using a bare repo - rather than using Git.repo
   def test_git_open_error
     assert_raise ArgumentError do
-      Git.open @wbare
+      Git.open BARE_REPO_PATH
     end
   end
 

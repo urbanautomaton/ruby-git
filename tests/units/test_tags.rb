@@ -9,8 +9,8 @@ class TestTags < Test::Unit::TestCase
   
   def test_tags
     in_temp_dir do |path|
-      r1 = Git.clone(@wbare, 'repo1')
-      r2 = Git.clone(@wbare, 'repo2')
+      r1 = Git.clone(BARE_REPO_PATH, 'repo1')
+      r2 = Git.clone(BARE_REPO_PATH, 'repo2')
       r1.config('user.name', 'Test User')
       r1.config('user.email', 'test@email.com')
       r2.config('user.name', 'Test User')
@@ -76,7 +76,7 @@ class TestTags < Test::Unit::TestCase
 
   def test_tag_message_not_prefixed_with_space
     in_temp_dir do |path|
-      repo = Git.clone(@wbare, 'repo1')
+      repo = Git.clone(BARE_REPO_PATH, 'repo1')
       repo.add_tag('donkey', :annotated => true, :message => 'hello')
       tag = repo.tag('donkey')
       assert_equal(tag.message, 'hello')

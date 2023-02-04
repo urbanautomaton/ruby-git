@@ -10,7 +10,7 @@ class TestIndexOps < Test::Unit::TestCase
 
   def test_add
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'new')
+      g = Git.clone(BARE_REPO_PATH, 'new')
       Dir.chdir('new') do
         assert_equal('100644', g.status['example.txt'].mode_index)
 
@@ -39,7 +39,7 @@ class TestIndexOps < Test::Unit::TestCase
 
   def test_clean
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'clean_me')
+      g = Git.clone(BARE_REPO_PATH, 'clean_me')
       Dir.chdir('clean_me') do
         new_file('test-file', 'blahblahbal')
         new_file('ignored_file', 'ignored file contents')
@@ -91,7 +91,7 @@ class TestIndexOps < Test::Unit::TestCase
 
   def test_revert
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'new')
+      g = Git.clone(BARE_REPO_PATH, 'new')
       Dir.chdir('new') do
         new_file('test-file', 'blahblahbal')
         g.add
@@ -113,7 +113,7 @@ class TestIndexOps < Test::Unit::TestCase
 
   def test_add_array
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'new')
+      g = Git.clone(BARE_REPO_PATH, 'new')
       Dir.chdir('new') do
 
         new_file('test-file1', 'blahblahblah1')
@@ -135,7 +135,7 @@ class TestIndexOps < Test::Unit::TestCase
 
   def test_remove
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'remove_test')
+      g = Git.clone(BARE_REPO_PATH, 'remove_test')
       Dir.chdir('remove_test') do
         assert(g.status['example.txt'])
         g.remove('example.txt')
@@ -148,7 +148,7 @@ class TestIndexOps < Test::Unit::TestCase
 
   def test_reset
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'reset_test')
+      g = Git.clone(BARE_REPO_PATH, 'reset_test')
       Dir.chdir('reset_test') do
         new_file('test-file1', 'blahblahblah1')
         new_file('test-file2', 'blahblahblah2')

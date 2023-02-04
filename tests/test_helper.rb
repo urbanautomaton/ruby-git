@@ -11,9 +11,9 @@ class Test::Unit::TestCase
   TEST_ROOT = File.expand_path(__dir__)
   TEST_FIXTURES = File.join(TEST_ROOT, 'files')
 
-  def set_file_paths
-    @wbare = File.join(TEST_FIXTURES, 'working.git')
+  BARE_REPO_PATH = File.join(TEST_FIXTURES, 'working.git')
 
+  def set_file_paths
     @wdir = create_temp_repo('working')
   end
 

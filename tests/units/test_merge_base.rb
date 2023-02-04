@@ -9,7 +9,7 @@ class TestMergeBase < Test::Unit::TestCase
 
   def test_branch_and_master_merge_base
     in_temp_dir do |_path|
-      repo = Git.clone(@wbare, 'branch_merge_test')
+      repo = Git.clone(BARE_REPO_PATH, 'branch_merge_test')
       Dir.chdir('branch_merge_test') do
         true_ancestor_sha = repo.gcommit('master').sha
 
@@ -25,7 +25,7 @@ class TestMergeBase < Test::Unit::TestCase
 
   def test_branch_and_master_independent_merge_base
     in_temp_dir do |_path|
-      repo = Git.clone(@wbare, 'branch_merge_test')
+      repo = Git.clone(BARE_REPO_PATH, 'branch_merge_test')
       Dir.chdir('branch_merge_test') do
         true_ancestor_sha = repo.gcommit('master').sha
 
@@ -42,7 +42,7 @@ class TestMergeBase < Test::Unit::TestCase
 
   def test_branch_and_master_fork_point_merge_base
     in_temp_dir do |_path|
-      repo = Git.clone(@wbare, 'branch_merge_test')
+      repo = Git.clone(BARE_REPO_PATH, 'branch_merge_test')
       Dir.chdir('branch_merge_test') do
         add_commit(repo, 'master')
 
@@ -63,7 +63,7 @@ class TestMergeBase < Test::Unit::TestCase
 
   def test_branch_and_master_all_merge_base
     in_temp_dir do |_path|
-      repo = Git.clone(@wbare, 'branch_merge_test')
+      repo = Git.clone(BARE_REPO_PATH, 'branch_merge_test')
       Dir.chdir('branch_merge_test') do
         add_commit(repo, 'new_branch_1')
 
@@ -94,7 +94,7 @@ class TestMergeBase < Test::Unit::TestCase
 
   def test_branches_and_master_merge_base
     in_temp_dir do |_path|
-      repo = Git.clone(@wbare, 'branch_merge_test')
+      repo = Git.clone(BARE_REPO_PATH, 'branch_merge_test')
       Dir.chdir('branch_merge_test') do
         add_commit(repo, 'new_branch_1')
         add_commit(repo, 'master')
@@ -113,7 +113,7 @@ class TestMergeBase < Test::Unit::TestCase
 
   def test_branches_and_master_octopus_merge_base
     in_temp_dir do |_path|
-      repo = Git.clone(@wbare, 'branch_merge_test')
+      repo = Git.clone(BARE_REPO_PATH, 'branch_merge_test')
       Dir.chdir('branch_merge_test') do
         true_ancestor_sha = repo.gcommit('master').sha
 

@@ -9,7 +9,7 @@ class TestRepack < Test::Unit::TestCase
   
   def test_repack
     in_temp_dir do |path|
-      r1 = Git.clone(@wbare, 'repo1')
+      r1 = Git.clone(BARE_REPO_PATH, 'repo1')
         
 
       r1.chdir do 
