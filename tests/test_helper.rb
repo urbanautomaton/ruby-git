@@ -22,6 +22,13 @@ class Test::Unit::TestCase
     FileUtils.rm_r(@tmp_path) if instance_variable_defined?(:@tmp_path)
   end
 
+  def in_temp_repo(clone_name)
+    clone_path = create_temp_repo(clone_name)
+    Dir.chdir(clone_path) do
+      yield
+    end
+  end
+
   def create_temp_repo(clone_name)
     clone_path = File.join(TEST_FIXTURES, clone_name)
     filename = 'git_test' + Time.now.to_i.to_s + rand(300).to_s.rjust(3, '0')
