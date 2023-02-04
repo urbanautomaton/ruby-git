@@ -2,16 +2,17 @@ require 'date'
 require 'fileutils'
 require 'logger'
 require 'minitar'
-require 'pathname'
 require 'test/unit'
 
 require "git"
 
 class Test::Unit::TestCase
 
+  TEST_ROOT = File.expand_path(__dir__)
+  TEST_FIXTURES = File.join(TEST_ROOT, 'files')
+
   def set_file_paths
-    @test_dir = Pathname.new(__dir__).join('files')
-    @wbare = File.expand_path(File.join(@test_dir, 'working.git'))
+    @wbare = File.join(TEST_FIXTURES, 'working.git')
 
     @wdir = create_temp_repo('working')
   end
@@ -22,7 +23,7 @@ class Test::Unit::TestCase
   end
 
   def create_temp_repo(clone_name)
-    clone_path = Pathname.new(__dir__).join('files', clone_name)
+    clone_path = File.join(TEST_FIXTURES, clone_name)
     filename = 'git_test' + Time.now.to_i.to_s + rand(300).to_s.rjust(3, '0')
     @tmp_path = File.expand_path(File.join("/tmp/", filename))
     FileUtils.mkdir_p(@tmp_path)
