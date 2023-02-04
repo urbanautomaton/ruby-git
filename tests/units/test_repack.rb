@@ -4,13 +4,9 @@ require 'test_helper'
 
 class TestRepack < Test::Unit::TestCase
   def test_repack
-    in_temp_dir do |path|
-      r1 = Git.clone(BARE_REPO_PATH, 'repo1')
+    in_bare_repo_clone do |r1|
+      new_file('new_file', 'new content')
 
-
-      r1.chdir do
-        new_file('new_file', 'new content')
-      end
       r1.add
       r1.commit('my commit')
 

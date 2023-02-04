@@ -71,8 +71,7 @@ class TestTags < Test::Unit::TestCase
   end
 
   def test_tag_message_not_prefixed_with_space
-    in_temp_dir do |path|
-      repo = Git.clone(BARE_REPO_PATH, 'repo1')
+    in_bare_repo_clone do |repo|
       repo.add_tag('donkey', :annotated => true, :message => 'hello')
       tag = repo.tag('donkey')
       assert_equal(tag.message, 'hello')

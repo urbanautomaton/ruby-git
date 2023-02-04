@@ -22,6 +22,15 @@ class Test::Unit::TestCase
     FileUtils.rm_r(@tmp_path) if instance_variable_defined?(:@tmp_path)
   end
 
+  def in_bare_repo_clone
+    in_temp_dir do |path|
+      git = Git.clone(BARE_REPO_PATH, 'bare')
+      Dir.chdir('bare') do
+        yield git
+      end
+    end
+  end
+
   def in_temp_repo(clone_name)
     clone_path = create_temp_repo(clone_name)
     Dir.chdir(clone_path) do
