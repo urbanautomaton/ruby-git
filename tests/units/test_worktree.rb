@@ -19,18 +19,6 @@ class TestWorktree < Test::Unit::TestCase
     create_temp_repo(File.expand_path(File.join(test_dir, 'worktree')))
   end
 
-  def create_temp_repo(clone_path)
-    filename = 'git_test' + Time.now.to_i.to_s + rand(300).to_s.rjust(3, '0')
-    @tmp_path = File.join("/tmp/", filename)
-    FileUtils.mkdir_p(@tmp_path)
-    FileUtils.cp_r(clone_path, @tmp_path)
-    tmp_path = File.join(@tmp_path, File.basename(clone_path))
-    Dir.chdir(tmp_path) do
-      FileUtils.mv('dot_git', '.git')
-    end
-    tmp_path
-  end
-
   def setup
     @git = Git.open(git_working_dir)
 

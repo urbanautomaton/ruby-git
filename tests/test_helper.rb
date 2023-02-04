@@ -35,7 +35,7 @@ class Test::Unit::TestCase
     @tmp_path = File.expand_path(File.join("/tmp/", filename))
     FileUtils.mkdir_p(@tmp_path)
     FileUtils.cp_r(clone_path, @tmp_path)
-    tmp_path = File.join(@tmp_path, 'working')
+    tmp_path = File.join(@tmp_path, File.basename(clone_path))
     FileUtils.cd tmp_path do
       FileUtils.mv('dot_git', '.git')
     end
