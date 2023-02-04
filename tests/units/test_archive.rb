@@ -56,13 +56,8 @@ class TestArchive < Test::Unit::TestCase
     assert_match(%r{test/}, lines[1])
     assert_match(%r{test/ex_dir/ex\.txt}, lines[3])
 
-    in_temp_dir do
-      c = Git.clone(@wbare, 'new')
-      c.chdir do
-        f = @git.remote('working').branch('master').archive(tempfile, :format => 'tgz')
-        assert(File.exist?(f))
-      end
-    end
+    f = @git.remote('working').branch('master').archive(tempfile, :format => 'tgz')
+    assert(File.exist?(f))
   end
 
 end
