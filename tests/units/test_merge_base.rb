@@ -3,10 +3,6 @@
 require 'test_helper'
 
 class TestMergeBase < Test::Unit::TestCase
-  def setup
-    set_file_paths
-  end
-
   def test_branch_and_master_merge_base
     in_temp_dir do |_path|
       repo = Git.clone(BARE_REPO_PATH, 'branch_merge_test')

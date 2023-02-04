@@ -4,10 +4,6 @@ require 'test_helper'
 
 class TestIndexOps < Test::Unit::TestCase
 
-  def setup
-    set_file_paths
-  end
-
   def test_add
     in_temp_dir do |path|
       g = Git.clone(BARE_REPO_PATH, 'new')

@@ -3,10 +3,6 @@
 require 'test_helper'
 
 class TestRemotes < Test::Unit::TestCase
-  def setup
-    set_file_paths
-  end
-
   def test_add_remote
     in_temp_dir do |path|
       local = Git.clone(BARE_REPO_PATH, 'local')

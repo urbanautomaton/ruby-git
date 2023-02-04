@@ -3,10 +3,6 @@
 require 'test_helper'
 
 class TestMerge < Test::Unit::TestCase
-  def setup
-    set_file_paths
-  end
-  
   def test_branch_and_merge
     in_temp_dir do |path|
       g = Git.clone(BARE_REPO_PATH, 'branch_merge_test')
@@ -24,15 +20,15 @@ class TestMerge < Test::Unit::TestCase
 
         new_file('new_file_3', 'hello')
         g.add
-        
+
         assert(!g.status['new_file_1'])  # file is not there
-        
+
         assert(g.branch('new_branch').merge)
         assert(g.status['new_file_1'])  # file has been merged in
       end
     end
   end
-  
+
   def test_branch_and_merge_two
     in_temp_dir do |path|
       g = Git.clone(BARE_REPO_PATH, 'branch_merge_test')
@@ -59,15 +55,15 @@ class TestMerge < Test::Unit::TestCase
 
         g.branch('new_branch').checkout
         assert(g.status['new_file_3'])  # file has been merged in
-        
+
         g.branch('master').checkout
         g.merge(g.branch('new_branch'))
         assert(g.status['new_file_3'])  # file has been merged in
-        
+
       end
     end
   end
-  
+
   def test_branch_and_merge_multiple
     in_temp_dir do |path|
       g = Git.clone(BARE_REPO_PATH, 'branch_merge_test')
@@ -96,11 +92,11 @@ class TestMerge < Test::Unit::TestCase
 
         assert(g.status['new_file_1'])  # file has been merged in
         assert(g.status['new_file_3'])  # file has been merged in
-                
+
       end
     end
   end
-  
+
   def test_no_ff_merge
     in_temp_dir do |path|
       g = Git.clone(BARE_REPO_PATH, 'branch_merge_test')

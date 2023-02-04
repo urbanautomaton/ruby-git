@@ -5,11 +5,8 @@ require 'stringio'
 require 'logger'
 
 class TestInit < Test::Unit::TestCase
-  def setup
-    set_file_paths
-  end
-
   def test_open_simple
+    set_file_paths
     g = Git.open(@wdir)
     assert_match(/^C?:?#{@wdir}$/, g.dir.path)
     assert_match(/^C?:?#{File.join(@wdir, '.git')}$/, g.repo.path)
@@ -17,6 +14,7 @@ class TestInit < Test::Unit::TestCase
   end
 
   def test_open_opts
+    set_file_paths
     index = File.join(TEST_FIXTURES, 'index')
     g = Git.open @wdir, :repository => BARE_REPO_PATH, :index => index
     assert_equal(g.repo.path, BARE_REPO_PATH)

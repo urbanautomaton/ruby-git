@@ -4,12 +4,7 @@ require 'test_helper'
 
 class TestTreeOps < Test::Unit::TestCase
 
-  def setup
-    set_file_paths
-  end
-
   def test_read_tree
-
     in_temp_dir do
       g = Git.clone(BARE_REPO_PATH, 'test')
 
