@@ -4,16 +4,7 @@ require 'test_helper'
 
 class TestDiffWithNonDefaultEncoding < Test::Unit::TestCase
   def git_working_dir
-    cwd = FileUtils.pwd
-    if File.directory?(File.join(cwd, 'files'))
-      test_dir = File.join(cwd, 'files')
-    elsif File.directory?(File.join(cwd, '..', 'files'))
-      test_dir = File.join(cwd, '..', 'files')
-    elsif File.directory?(File.join(cwd, 'tests', 'files'))
-      test_dir = File.join(cwd, 'tests', 'files')
-    end
-
-    create_temp_repo(File.expand_path(File.join(test_dir, 'encoding')))
+    create_temp_repo('encoding')
   end
 
   def setup

@@ -11,10 +11,9 @@ class Test::Unit::TestCase
 
   def set_file_paths
     @test_dir = Pathname.new(__dir__).join('files')
-    @wdir_dot = File.expand_path(File.join(@test_dir, 'working'))
     @wbare = File.expand_path(File.join(@test_dir, 'working.git'))
 
-    @wdir = create_temp_repo(@wdir_dot)
+    @wdir = create_temp_repo('working')
   end
 
   teardown
@@ -22,7 +21,8 @@ class Test::Unit::TestCase
     FileUtils.rm_r(@tmp_path) if instance_variable_defined?(:@tmp_path)
   end
 
-  def create_temp_repo(clone_path)
+  def create_temp_repo(clone_name)
+    clone_path = Pathname.new(__dir__).join('files', clone_name)
     filename = 'git_test' + Time.now.to_i.to_s + rand(300).to_s.rjust(3, '0')
     @tmp_path = File.expand_path(File.join("/tmp/", filename))
     FileUtils.mkdir_p(@tmp_path)
