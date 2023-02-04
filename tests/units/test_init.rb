@@ -17,9 +17,10 @@ class TestInit < Test::Unit::TestCase
   end
 
   def test_open_opts
-    g = Git.open @wdir, :repository => @wbare, :index => @index
+    index = File.expand_path(File.join(@test_dir, 'index'))
+    g = Git.open @wdir, :repository => @wbare, :index => index
     assert_equal(g.repo.path, @wbare)
-    assert_equal(g.index.path, @index)
+    assert_equal(g.index.path, index)
   end
 
   def test_git_bare

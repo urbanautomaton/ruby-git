@@ -13,7 +13,6 @@ class Test::Unit::TestCase
     @test_dir = Pathname.new(__dir__).join('files')
     @wdir_dot = File.expand_path(File.join(@test_dir, 'working'))
     @wbare = File.expand_path(File.join(@test_dir, 'working.git'))
-    @index = File.expand_path(File.join(@test_dir, 'index'))
 
     @wdir = create_temp_repo(@wdir_dot)
   end
