@@ -42,7 +42,7 @@ class Test::Unit::TestCase
     tmp_path
   end
 
-  def in_temp_dir(remove_after = true) # :yields: the temporary dir's path
+  def in_temp_dir # :yields: the temporary dir's path
     tmp_path = nil
     while tmp_path.nil? || File.directory?(tmp_path)
       filename = 'git_test' + Time.now.to_i.to_s + rand(300).to_s.rjust(3, '0')
@@ -52,7 +52,7 @@ class Test::Unit::TestCase
     FileUtils.cd tmp_path do
       yield tmp_path
     end
-    FileUtils.rm_r(tmp_path) if remove_after
+    FileUtils.rm_r(tmp_path)
   end
 
   def create_file(path, content)
