@@ -7,18 +7,14 @@ default_tasks = []
 
 desc 'Run Unit Tests'
 task :test do
-  sh 'git config --global user.email "git@example.com"' if `git config user.email`.empty?
-  sh 'git config --global user.name "GitExample"' if `git config user.name`.empty?
+  sh 'bin/test'
 
-  $LOAD_PATH.unshift(File.join(__dir__, 'tests'))
-
-  Dir.glob(File.join(__dir__, 'tests/**/test_*.rb')) do |p|
-    require p
-  end
-
-  # You can run individual test files from the command line with:
+  # You can run individual test files (or multiple files) from the command
+  # line with:
   #
-  # $ ruby -Ilib:tests tests/units/test_archive.rb
+  # $ bin/test tests/units/test_archive.rb
+  #
+  # $ bin/test tests/units/test_archive.rb tests/units/test_object.rb
 end
 default_tasks << :test
 
